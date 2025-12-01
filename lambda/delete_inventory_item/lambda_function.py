@@ -15,14 +15,9 @@ def lambda_handler(event, context):
 
     key_value = event['pathParameters']['id']
 
-    # Prepare the key for DynamoDB
-    key = {
-        '_id': {'S': key_value}
-    }
-
     # Attempt to delete the item from the table
     try:
-        dynamo_client.delete_item(TableName=table_name, Key=key)
+        dynamo_client.delete_item(TableName=table_name, Key=key_value)
         return {
             'statusCode': 200,
             'body': json.dumps(f"Item with ID {key_value} deleted successfully.")
