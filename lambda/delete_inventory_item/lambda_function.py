@@ -18,8 +18,12 @@ def lambda_handler(event, context):
 
     key_value = event['pathParameters']['id']
 
+    key = {
+        '_id': {'S': key_value}
+    }
+
     try:
-        table.delete_item(Key=key_value)
+        table.delete_item(Key=key)
         return {
             'statusCode': 200,
             'body': json.dumps(f"Item deleted successfully.")
@@ -27,5 +31,5 @@ def lambda_handler(event, context):
     except Exception as e:
         return {
             'statusCode': 500,
-            'body': json.dumps(f"Error adding item: {str(e)}")
+            'body': json.dumps(f"Error deleting item: {str(e)}")
         }
