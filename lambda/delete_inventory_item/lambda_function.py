@@ -1,12 +1,15 @@
-import boto3
 import json
+import requests
+import boto3
 
 def lambda_handler(event, context):
-    # Initialize DynamoDB client
-    dynamo_client = boto3.client('dynamodb')
-    table_name = 'Inventory'
+  
 
-    # Extract the '_id' from the path parameters
+    # DynamoDB setup
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table('Inventory')
+
+    # Get the key from the path parameters
     if 'pathParameters' not in event or 'id' not in event['pathParameters']:
         return {
             'statusCode': 400,
@@ -15,16 +18,14 @@ def lambda_handler(event, context):
 
     key_value = event['pathParameters']['id']
 
-    # Attempt to delete the item from the table
     try:
-        dynamo_client.delete_item(TableName=table_name, Key=key_value)
+        table.delete_item(Key=key_value)
         return {
             'statusCode': 200,
-            'body': json.dumps(f"Item with ID {key_value} deleted successfully.")
+            'body': json.dumps(f"Item deleted successfully.")
         }
     except Exception as e:
-        print(e)
         return {
             'statusCode': 500,
-            'body': json.dumps(f"Error deleting item: {str(e)}")
+            'body': json.dumps(f"Error adding item: {str(e)}")
         }
