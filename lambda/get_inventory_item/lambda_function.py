@@ -1,10 +1,27 @@
-import boto3
 import json
+import boto3
+from boto3.dynamodb.conditions import Key
+from botocore.exceptions import ClientError
+from decimal import Decimal
+
+# Initialize the DynamoDB client
+dynamodb = boto3.resource('dynamodb')
+
+# Define the DynamoDB table name
+TABLE_NAME = 'Inventory'
+
+# Function to convert Decimal to int/float
+def convert_decimals(obj):
+    if isinstance(obj, list):
+        return [convert_decimals(i) for i in obj]
+    elif isinstance(obj, dict):
+        return {k: convert_decimals(v) for k, v in obj.items()}
+    elif isinstance(obj, Decimal):  
+        return int(obj) if obj % 1 == 0 else float(obj)  # Convert to int if whole number, else float
+    return obj
 
 def lambda_handler(event, context):
-    # DynamoDB setup
-    dynamo_client = boto3.client('dynamodb')
-    table_name = 'Inventory'
+    table = dynamodb.Table(TABLE_NAME)
 
     # Get the key from the path parameters
     if 'pathParameters' not in event or 'id' not in event['pathParameters']:
@@ -15,29 +32,23 @@ def lambda_handler(event, context):
 
     key_value = event['pathParameters']['id']
 
-    # Prepare the key for DynamoDB
-    key = {
-        '_id': {'S': key_value}
-    }
-
-    # Get the item from the table
     try:
-        response = dynamo_client.get_item(TableName=table_name, Key=key)
-        item = response.get('Item', {})
+        # Query to get all items with SK = "Dog#large#GreatDane#001" using the GSI
+        response = table.query(
+            KeyConditionExpression=Key('_id').eq(int(event['pathParameters']['id']))
+        )
+        items = response.get('Items', [])
 
-        if not item:
-            return {
-                'statusCode': 404,
-                'body': json.dumps('Item not found')
-            }
-
-        return {
-            'statusCode': 200,
-            'body': json.dumps(item, default=str)  # Use str to handle any special types like Decimal
-        }
-    except Exception as e:
-        print(e)
+        # Convert Decimal values to JSON serializable types
+        items = convert_decimals(items)
+    except ClientError as e:
+        print(f"Failed to query items: {e.response['Error']['Message']}")
         return {
             'statusCode': 500,
-            'body': json.dumps(str(e))
+            'body': json.dumps('Failed to query items')
         }
+
+    return {
+        'statusCode': 200,
+        'body': json.dumps(items)
+    }
